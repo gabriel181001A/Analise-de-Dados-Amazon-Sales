@@ -1,157 +1,146 @@
-# Análise de Dados de Vendas da Amazon
+# Análise de Produtos, Preços e Avaliações — Amazon (Índia)
 
-Este projeto pessoal de análise de dados utiliza um dataset de vendas da Amazon, obtido da plataforma Kaggle. O objetivo deste projeto é explorar, limpar, modelar e visualizar dados de vendas da Amazon utilizando diversas ferramentas e tecnologias, como AWS, SQL, e Power BI.
+Peguei um dataset público com ~1.500 produtos da Amazon Índia e fui atrás de três perguntas que
+qualquer marketplace precisa entender: **onde está concentrado o catálogo**, **o quanto a Amazon
+desconta** e se **desconto grande tem a ver com produto melhor avaliado**. Montei o caminho de ponta
+a ponta — dos dados brutos na AWS até o dashboard no Power BI — e abaixo está o que encontrei.
 
-## Sumário
+> Uma observação honesta sobre os dados: apesar de o dataset ser conhecido como "Amazon Sales", ele
+> descreve **produtos** (preço, desconto, nota e nº de avaliações), e **não vendas/faturamento**. Por
+> isso a análise gira em torno de preço, desconto e avaliação. Os valores estão em **rupias (₹)**.
 
-- [Visão Geral](#visão-geral)
-- [Tecnologias Utilizadas](#tecnologias-utilizadas)
-- [Arquitetura do Projeto](#arquitetura-do-projeto)
-- [Aprendizados](#aprendizados)
-- [Etapas do Projeto](#etapas-do-projeto)
-- [Resultados](#resultados)
-- [Como Executar o Projeto](#como-executar-o-projeto)
-- [Referências](#referências)
+**Ferramentas:** AWS (S3 · Glue · Athena) · SQL · Python (pandas) · Power BI
 
-## Visão Geral
+---
 
-Este projeto faz uma análise dos detalhes de vendas da Amazon, incluindo informações sobre reviews de produtos, preços e outras métricas importantes. O objetivo principal é aplicar técnicas de análise de dados para obter insights valiosos que possam ajudar a entender melhor o desempenho dos produtos no marketplace da Amazon.
+## O que eu quis responder
 
-## Tecnologias Utilizadas
+- Quais categorias concentram o catálogo?
+- Qual o padrão de desconto da Amazon?
+- Desconto maior significa produto melhor avaliado?
+- Quais produtos são os mais populares (mais avaliados)?
 
-- **Kaggle**: Fonte do dataset.
-- **AWS S3**: Armazenamento dos dados.
-- **AWS Glue (Crawler e DataCatalog)**: Criação e gerenciamento de metadados.
-- **AWS Athena**: Análise exploratória de dados (EDA) utilizando SQL.
-- **Power BI**: Limpeza, modelagem e visualização de dados.
-- **Snowflake Schema**: Estrutura de dados adotada para modelagem.
-- **Power Query**: Ferramenta utilizada para transformação de dados no Power BI.
-- **SQL**: Linguagem utilizada para manipulação de dados e consultas no Athena.
+---
 
-## Arquitetura do Projeto
+## Os dados
 
-O fluxo de trabalho do projeto segue a seguinte arquitetura:
+Dataset [Amazon Sales Dataset](https://www.kaggle.com/datasets/karkavelrajaj/amazon-sales-dataset)
+do Kaggle: **1.465 produtos**, 16 colunas (categoria, preço original, preço com desconto, % de
+desconto, nota, nº de avaliações, texto das reviews, etc.). Os campos vêm como texto — preços com
+`₹`, desconto com `%` e vírgulas de milhar — então a primeira etapa foi limpar tudo isso.
 
-1. **Kaggle (Fonte dos Dados)**: O dataset foi obtido na plataforma Kaggle e contém detalhes sobre vendas, reviews, produtos e preços da Amazon.
-2. **AWS S3**: Os dados foram carregados para um bucket S3 para armazenamento seguro e escalável.
-3. **AWS Glue Crawler e DataCatalog**: Um Crawler foi configurado para catalogar o dataset e criar uma tabela no Glue DataCatalog.
-4. **AWS Athena**: SQL foi utilizado para a exploração inicial dos dados e análise exploratória de dados (EDA) no Athena.
-5. **Power BI**: O Power BI foi utilizado para a limpeza, modelagem, e criação de visualizações de dados, permitindo insights mais profundos.
+---
 
-![GITHUB ARQUITETURA](https://github.com/user-attachments/assets/778f082d-c646-4652-a7e0-e460608b26f9)
+## Como eu fiz
 
-## Aprendizados
+Fiz questão de passar pelo fluxo completo, do jeito que se faz no trabalho:
 
-Durante o desenvolvimento deste projeto, aprofundei meus conhecimentos nas seguintes áreas:
+1. **AWS S3** — subi o CSV bruto para um bucket, como fonte.
+2. **AWS Glue (Crawler + Data Catalog)** — cataloguei o schema automaticamente.
+3. **AWS Athena** — explorei com **SQL** direto sobre os dados no S3 (consultas em [`sql/`](sql/)).
+4. **Python (pandas)** — limpei os campos (₹, %, vírgulas), calculei as métricas e gerei os gráficos
+   (script em [`src/analise_amazon.py`](src/analise_amazon.py) e notebook em [`notebooks/`](notebooks/)).
+5. **Power BI** — modelei (esquema floco de neve) e montei o dashboard interativo.
 
-- **Snowflake Schema**: Estrutura de modelagem de dados em estrela e floco de neve para análise de dados.
-- **Power Query**: Manipulação e transformação de dados no Power BI.
-- **SQL**: Consultas SQL para análise exploratória no AWS Athena.
-- **AWS Services**: Utilização de serviços AWS, como S3, Glue e Athena, para processamento de dados.
-- **Análise de Dados**: Técnicas de análise exploratória de dados e visualização no Power BI.
+![Arquitetura do projeto](https://github.com/user-attachments/assets/778f082d-c646-4652-a7e0-e460608b26f9)
 
-## Etapas do Projeto
+---
 
-### 1. Obtenção dos Dados
+## O que eu encontrei
 
-- Dataset baixado da plataforma Kaggle, contendo informações detalhadas sobre vendas da Amazon.
+Trabalhando com **1.465 produtos** (nota média **4,10**, desconto médio de **48%** e **26,7 milhões**
+de avaliações somadas):
 
-### 2. Armazenamento no AWS S3
+**O catálogo é super concentrado.** Só três categorias — **Eletrônicos** (526 produtos),
+**Computadores & Acessórios** (453) e **Casa & Cozinha** (448) — respondem por **~97%** dos produtos.
+O resto (Office, Saúde, Instrumentos...) é uma cauda pequena.
 
-- Os dados foram armazenados em um bucket S3 para fácil acesso e manipulação.
+![Produtos por categoria](imagens/categorias.png)
 
-### 3. Criação de Tabelas no Glue DataCatalog
+**Desconto grande não significa produto melhor — é até o contrário.** Quando separo por faixa de
+desconto, a nota média **cai** conforme o desconto sobe: produtos com 0–25% de desconto têm nota
+**4,17**, e os com 75–100% caem para **3,99** (correlação de -0,15). Ou seja: promoção agressiva
+tende a acompanhar produtos um pouco pior avaliados — algo importante pra não usar "desconto alto"
+como sinal de qualidade.
 
-- Um Crawler foi configurado para detectar automaticamente o esquema dos dados e catalogá-los.
+![Nota média por faixa de desconto](imagens/desconto_vs_nota.png)
 
-### 4. Análise Exploratória no AWS Athena
+**Descontar é a regra, não a exceção.** A maior parte do catálogo está com desconto entre ~40% e 70%,
+e categorias como **Home Improvement** (58%) e **Computadores** (54%) são as que mais descontam.
 
-- Utilização de SQL no Athena para realizar a análise exploratória dos dados, incluindo limpeza e identificação de padrões.
-- As consultas SQL a seguir foram usadas para responder a perguntas chave de negócios:
+![Distribuição do desconto](imagens/distribuicao_desconto.png)
 
-#### Maiores Porcentagens de Descontos?
+**Os campeões de popularidade são acessórios baratos de eletrônica.** Os produtos com mais avaliações
+são os cabos HDMI da Amazon Basics (~427 mil avaliações), os fones **boAt** e os celulares **Redmi** —
+itens de ticket baixo e alto giro.
+
+### O que me chamou atenção
+
+A relação **inversa** entre desconto e nota foi o que mais me surpreendeu — eu imaginava que produto
+muito descontado seria "oferta boa", mas os dados sugerem o contrário. E as notas serem tão
+espremidas (quase tudo entre 4,0 e 4,4) mostra que **a nota média sozinha diz pouco** nesse catálogo;
+o número de avaliações acaba sendo um sinal melhor de relevância.
+
+---
+
+## O dashboard
+
+![Dashboard no Power BI](https://github.com/user-attachments/assets/dc2388e3-6647-42c4-9255-64f6e753339f)
+
+O arquivo `.pbix` está no repositório — dá pra abrir no Power BI Desktop e interagir.
+
+---
+
+## Um pouco do SQL (AWS Athena)
+
+Nota média por faixa de desconto — a consulta por trás do principal insight:
 
 ```sql
-SELECT product_id,
-       discount_percentage
-FROM data_set_aws
-WHERE product_id IN (
-    SELECT product_id
+WITH base AS (
+    SELECT
+        TRY_CAST(REPLACE(discount_percentage, '%', '') AS DOUBLE) AS desconto,
+        TRY_CAST(rating AS DOUBLE)                                AS nota
     FROM data_set_aws
-    GROUP BY product_id
-    HAVING COUNT(*) = 3
-);
-```
-
-#### Qual Categoria mais teve indício de venda?
-
-```sql
+)
 SELECT
-    category,
-    COUNT(*) as vendas_totais
-FROM data_set_aws
-GROUP BY
-    category
-ORDER BY
-    vendas_totais DESC;
+    CASE
+        WHEN desconto <= 25 THEN '0-25%'
+        WHEN desconto <= 50 THEN '25-50%'
+        WHEN desconto <= 75 THEN '50-75%'
+        ELSE '75-100%'
+    END                 AS faixa_desconto,
+    ROUND(AVG(nota), 2) AS nota_media,
+    COUNT(*)            AS qtd_produtos
+FROM base
+WHERE nota IS NOT NULL
+GROUP BY 1
+ORDER BY 1;
 ```
 
-#### Produtos com maiores indícios de avaliações?
+As demais consultas estão em [`sql/consultas_athena.sql`](sql/consultas_athena.sql).
 
-```sql
-SELECT
-    DISTINCT product_name,
-    TRIM(rating) AS rating,
-    TRIM(rating_count) AS rating_count
-FROM data_set_aws
-WHERE rating_count <> ''
-    OR TRIM(rating) <> '|'
-ORDER BY
-    rating DESC,
-    rating_count DESC;
+---
+
+## Limitações e o que eu faria depois
+
+- O dataset **não tem vendas nem datas**, então não dá pra analisar sazonalidade ou receita — a
+  análise é de catálogo (preço/desconto/avaliação).
+- As notas são pouco discriminantes (viés de sobrevivência); um próximo passo seria **analisar o
+  texto das reviews** (NLP) para entender o *porquê* das notas.
+- Cruzar preço, desconto e popularidade para estimar **elasticidade** por categoria.
+
+---
+
+## Como rodar
+
+```bash
+python -m venv .venv && .venv\Scripts\activate
+pip install -r requirements.txt
+python src/analise_amazon.py          # limpa os dados e gera os gráficos
+# ou abra notebooks/analise_amazon.ipynb
+# e o dashboard: abra o .pbix no Power BI Desktop
 ```
 
-#### Quais foram as maiores vendas?
+---
 
-```sql
-SELECT
-    product_name,
-    COUNT(*)
-FROM sales.data_set_aws
-GROUP BY
-    product_name;
-```
-
-### 5. Limpeza e Modelagem no Power BI
-
-- Os dados foram carregados no Power BI, onde foram realizadas transformações e limpezas utilizando o Power Query.
-- A modelagem dos dados seguiu o esquema Snowflake (floco de neve), organizando as tabelas de fatos e dimensões de forma otimizada para a análise.
-
-![image](https://github.com/user-attachments/assets/6b6a069f-ca1f-403a-b5d0-77c3dc6a6498)
-
-
-### 6. Visualização e Geração de Insights no Power BI
-
-- Foram criados dashboards interativos no Power BI para visualização dos dados.
-- As visualizações forneceram insights sobre os padrões de vendas, produtos mais vendidos, impacto das avaliações e variações de preços ao longo do tempo.
-
-## Resultados
-
-![power bi github](https://github.com/user-attachments/assets/dc2388e3-6647-42c4-9255-64f6e753339f)
-
-
-## Como Executar o Projeto
-
-Se você deseja reproduzir este projeto, siga os passos abaixo:
-
-1. **Baixe ou clone os arquivos neste repositório:** 
-    - amazon.csv 
-    - Amazon-sales-dashboard.pbix
-
-## Referências
-
-- [Kaggle - Fonte do Dataset](https://www.kaggle.com/datasets/karkavelrajaj/amazon-sales-dataset)
-
-## Licença
-
-Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+Gabriel Leite Rafael da Graça — gabrieleit18@gmail.com

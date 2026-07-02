@@ -1,0 +1,7 @@
+# O notebook (.ipynb) é grande e faria o GitHub mostrar "Jupyter Notebook 100%",
+# escondendo as linguagens de fato. Marcá-lo como documentação tira ele da contagem
+# (continua visível no repo) e deixa Python e SQL aparecerem na barra de linguagens.
+*.ipynb linguist-documentation
+
+# Por padrão o GitHub não conta SQL (trata como "linguagem de dados"). Isto força a contagem.
+*.sql linguist-detectable=true
